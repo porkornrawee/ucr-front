@@ -44,7 +44,7 @@ function transformFeatures(features: any[]) {
         avg_heat_index:       38.0,
         max_heat_index:       42.0,
         streetview_image_url: f.properties.streetview_image_url === "UPLOADED"
-            ? `http://47.129.159.61:8000/static/${f.properties.image_path}`
+            ? `/api/proxy-image?url=${encodeURIComponent(`http://47.129.159.61:8000/static/${f.properties.image_path}`)}`
             : f.properties.streetview_image_url,
         scene_description:    f.properties.scene_description,
         shade_fraction:       veg.shade_fraction,
