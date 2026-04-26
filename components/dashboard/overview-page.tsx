@@ -21,8 +21,39 @@ import {
   TrendingUp,
   ArrowUpRight,
 } from "lucide-react"
-//เดิม import { surveyStats, climateSignals, communityInputs, climateEvents } from "@/lib/mock-data"
-//แก้ละลบ import { type ClimateEvent } from "@/lib/mock-data"
+
+// --- Interfaces ---
+interface ClimateEvent {
+  id: string | number
+  type: "heat" | "rain"
+  event_date: string
+  title: string
+  description: string
+  zones: string[]
+  chatbot_responses: number
+}
+
+interface SurveyStats {
+  total_households: number
+  zones_count: number
+  variables_tracked: number
+  last_updated: string
+}
+
+interface ClimateSignals {
+  heat_alerts: number
+  heavy_rainfall_events: number
+  avg_temperature: number
+}
+
+interface CommunityInputs {
+  chatbot_reports: number
+  sensor_points: number
+  street_images: number
+  active_contributors: number
+}
+
+// --- Components ---
 function StatItem({
   icon: Icon,
   label,
@@ -51,10 +82,10 @@ function StatItem({
 }
 
 export function OverviewPage() {
-  const [surveyStats, setSurveyStats] = useState<any>(null)
-  const [climateSignals, setClimateSignals] = useState<any>(null)
-  const [communityInputs, setCommunityInputs] = useState<any>(null)
-  const [recentEvents, setRecentEvents] = useState<any[]>([])
+  const [surveyStats, setSurveyStats] = useState<SurveyStats | null>(null)
+  const [climateSignals, setClimateSignals] = useState<ClimateSignals | null>(null)
+  const [communityInputs, setCommunityInputs] = useState<CommunityInputs | null>(null)
+  const [recentEvents, setRecentEvents] = useState<ClimateEvent[]>([])
 
   useEffect(() => {
     fetch("/api/overview")
@@ -65,6 +96,7 @@ export function OverviewPage() {
         setCommunityInputs(data.communityInputs)
         setRecentEvents(data.climateEvents)
       })
+      .catch((err) => console.error("Failed to fetch dashboard data:", err))
   }, [])
 
   if (!surveyStats || !climateSignals || !communityInputs) return null
@@ -130,7 +162,7 @@ export function OverviewPage() {
               <StatItem icon={Droplets} label="Heavy Rainfall Events" value={climateSignals.heavy_rainfall_events} />
               <StatItem icon={Thermometer} label="Avg. Temperature" value={climateSignals.avg_temperature} unit="C" />
               <div className="mt-1 border-t pt-3">
-                <div className="flex items-center gap-1 text-xs text-accent">
+                <div className="flex items-center gap-1 text-xs text-amber-600">
                   <TrendingUp className="size-3" />
                   <span className="font-medium">+2.1C above seasonal average</span>
                 </div>
@@ -143,8 +175,8 @@ export function OverviewPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-md bg-accent/10">
-                <MessageSquare className="size-4 text-accent" />
+              <div className="flex size-8 items-center justify-center rounded-md bg-blue-500/10">
+                <MessageSquare className="size-4 text-blue-500" />
               </div>
               <div>
                 <CardTitle className="text-sm">Community & Field Inputs</CardTitle>
@@ -190,14 +222,16 @@ export function OverviewPage() {
                     )}
                     {event.type === "heat" ? "Heat" : "Rain"}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">{new Date(event.event_date).toISOString().split("T")[0]}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(event.event_date).toISOString().split("T")[0]}
+                  </span>
                 </div>
                 <h4 className="text-sm font-medium text-foreground">{event.title}</h4>
                 <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
                   {event.description}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {event.zones.slice(0, 2).map((zone) => (
+                  {event.zones.slice(0, 2).map((zone: string) => (
                     <Badge key={zone} variant="outline" className="text-xs">
                       {zone}
                     </Badge>

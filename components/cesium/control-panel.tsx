@@ -1,13 +1,14 @@
 "use client"
 
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { RotateCcw, Download } from "lucide-react"
-import type { HeatRisk, SegmentsGeoJSON } from "@/lib/segment-types"
+import { RotateCcw, Download, MapPin, BarChart2 } from "lucide-react"
+import type { HeatRisk, SegmentsGeoJSON, SegmentFeature } from "@/lib/segment-types"
 import { RISK_COLORS, RISK_LABELS } from "@/lib/segment-types"
 import type { BaseMapStyle } from "@/components/cesium/cesium-map"
 
@@ -45,9 +46,21 @@ export function ControlPanel({
   data,
   selectedSegmentId,
 }: ControlPanelProps) {
+  // สร้าง State สำหรับเมนูที่เพิ่มเข้ามาใหม่
+  const [viewMode, setViewMode] = useState<'route' | 'data'>('route')
+  const [selectedRouteId, setSelectedRouteId] = useState<number | null>(null)
 
-  console.log("widthRange:", filters.widthRange)
-  
+  // จัดกลุ่มข้อมูล Route สำหรับแสดงผลในลิสต์ Walk Segments
+  const routeGroups = useMemo(() => {
+    const groups = new Map<number, SegmentFeature[]>()
+    ;(data?.features ?? []).forEach((f) => {
+      const rid = f.properties.route_id
+      if (!groups.has(rid)) groups.set(rid, [])
+      groups.get(rid)!.push(f)
+    })
+    return groups
+  }, [data?.features])
+
   const exportSelectedJSON = () => {
     if (!selectedSegmentId) return
     const feature = data.features.find(
@@ -112,12 +125,6 @@ export function ControlPanel({
                   : "border-border text-muted-foreground hover:bg-secondary"
               }`}
             >
-              <svg width="20" height="14" viewBox="0 0 20 14" fill="none" className="opacity-60">
-                <rect x="0.5" y="0.5" width="19" height="13" rx="1.5" stroke="currentColor" strokeWidth="1" />
-                <line x1="4" y1="4" x2="16" y2="4" stroke="currentColor" strokeWidth="0.75" />
-                <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="0.75" />
-                <line x1="4" y1="10" x2="14" y2="10" stroke="currentColor" strokeWidth="0.75" />
-              </svg>
               Minimal
             </button>
             <button
@@ -128,18 +135,121 @@ export function ControlPanel({
                   : "border-border text-muted-foreground hover:bg-secondary"
               }`}
             >
-              <svg width="20" height="14" viewBox="0 0 20 14" fill="none" className="opacity-60">
-                <rect x="0.5" y="0.5" width="19" height="13" rx="1.5" stroke="currentColor" strokeWidth="1" />
-                <rect x="3" y="3" width="5" height="4" rx="0.5" fill="currentColor" opacity="0.3" />
-                <rect x="10" y="5" width="6" height="5" rx="0.5" fill="currentColor" opacity="0.2" />
-                <rect x="5" y="8" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.25" />
-              </svg>
               Satellite
             </button>
           </div>
         </div>
 
         <Separator />
+
+        {/* ========================================== */}
+        {/* VIEW MODE & WALK SEGMENTS (เพิ่มใหม่) */}
+        {/* ========================================== */}
+        
+        {/* View Mode Toggle */}
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            View Mode
+          </span>
+          <div className="flex gap-1 rounded-md border bg-card p-1">
+            <button
+              onClick={() => setViewMode('route')}
+              className={`flex-1 flex items-center justify-center rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                viewMode === 'route' 
+                  ? 'bg-teal-600 text-white' 
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <MapPin className="mr-1.5 size-3" /> ดู Route
+            </button>
+            <button
+              onClick={() => setViewMode('data')}
+              className={`flex-1 flex items-center justify-center rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                viewMode === 'data' 
+                  ? 'bg-teal-600 text-white' 
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              <BarChart2 className="mr-1.5 size-3" /> เช็ค Data
+            </button>
+          </div>
+        </div>
+
+        {/* Walk Segments List */}
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Walk Segments
+          </span>
+          <div className="space-y-1.5">
+            {Array.from(routeGroups.entries()).map(([rid, features]) => {
+              // พยายามดึงชื่อจากข้อมูล ถ้าไม่มีให้ใช้ "Route + เลข"
+              const routeName = features[0]?.properties?.neighborhood || features[0]?.properties?.segment_name || `Route ${rid}`;
+              const isSelected = selectedRouteId === rid;
+              
+              return (
+                <button
+                  key={rid}
+                  onClick={() => setSelectedRouteId(isSelected ? null : rid)}
+                  className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
+                    isSelected 
+                      ? 'border-teal-600 bg-teal-600/10 text-foreground' 
+                      : 'border-border text-muted-foreground hover:bg-secondary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {/* จุดสีแสดงสถานะการเลือก */}
+                    <div className={`size-2.5 rounded-full ${isSelected ? 'bg-teal-500' : 'bg-muted-foreground/30'}`} />
+                    <span className="font-medium text-xs">{routeName}</span>
+                  </div>
+                  <Badge variant="secondary" className="text-[10px] font-normal bg-background/50">
+                    {features.length} segs
+                  </Badge>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Panel แสดงข้อมูล Data Analysis เมื่อกดปุ่ม เช็ค Data */}
+          {viewMode === 'data' && (
+            <div className="mt-2 rounded-md border bg-secondary/30 p-3 shadow-inner">
+              {selectedRouteId !== null ? (
+                (() => {
+                  const feats = routeGroups.get(selectedRouteId) || [];
+                  const widths = feats.map((f: any) => f.properties.walkway_width_m);
+                  const shades = feats.map((f: any) => f.properties.shade_fraction_est);
+                  const svfs = feats.map((f: any) => f.properties.sky_view_factor_est);
+                  
+                  // คำนวณค่าต่างๆ
+                  const medianWidth = widths.sort((a:number, b:number) => a - b)[Math.floor(widths.length / 2)]?.toFixed(1) ?? '--';
+                  const avgShade = shades.length ? (shades.reduce((a:number,b:number)=>a+b,0)/shades.length*100).toFixed(0)+'%' : '--';
+                  const avgSVF = svfs.length ? (svfs.reduce((a:number,b:number)=>a+b,0)/svfs.length).toFixed(2) : '--';
+                  
+                  return (
+                    <div className="space-y-2.5 text-xs">
+                      <div className="flex justify-between border-b border-border/50 pb-1">
+                        <span className="text-muted-foreground">Walkway Width</span>
+                        <span className="font-medium text-foreground">{medianWidth} m</span>
+                      </div>
+                      <div className="flex justify-between border-b border-border/50 pb-1">
+                        <span className="text-muted-foreground">Avg Shade</span>
+                        <span className="font-medium text-foreground">{avgShade}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Sky View Factor</span>
+                        <span className="font-medium text-foreground">{avgSVF}</span>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <p className="text-center text-[10px] text-muted-foreground">เลือก route เพื่อวิเคราะห์ข้อมูล</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <Separator />
+        {/* ========================================== */}
 
         {/* Layer Toggles */}
         <div className="flex flex-col gap-2">

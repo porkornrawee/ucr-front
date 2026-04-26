@@ -37,8 +37,8 @@ function median(arr: number[]): number {
 }
 
 export function Map3DPage() {
+  const [viewMode, setViewMode] = useState<'route' | 'data'>('route')
   const { data, isLoading, error } = useSWR<SegmentsGeoJSON>(
-   // ของเก่า "/data/segments.geojson",
     "/api/street-analyses",
     fetcher
   )
