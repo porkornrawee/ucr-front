@@ -262,7 +262,7 @@ export function BangkokMap({
 }
 
 function createPointIcon(
-  L: typeof import("leaflet").default,
+  L: typeof import("leaflet"),
   point: MapPoint,
   selectedPoint: MapPoint | null
 ) {
